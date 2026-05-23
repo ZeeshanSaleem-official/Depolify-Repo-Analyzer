@@ -1,15 +1,12 @@
 package main
 
 import (
+	"depolify-analyzer/pkg/analyzer"
 	"encoding/json"
 	"fmt"
-
-	// Make sure this matches your module name in go.mod exactly!
-	"depolify-analyzer/pkg/analyzer"
 )
 
 func main() {
-	// Point this to a valid path on your local machine to test
 	testRepoPath := "../../test-repos"
 
 	fmt.Println("Starting DEPOLIFY Repository Extraction...")
@@ -19,10 +16,6 @@ func main() {
 		fmt.Println("Extraction failed:", err)
 		return
 	}
-
-	// ==========================================
-	// STAGE 4: State Validation & The Fail-Safe
-	// ==========================================
 
 	// Condition B: Missing Component
 	if len(extractedData.Frontends) == 0 || len(extractedData.Backends) == 0 {
@@ -41,8 +34,6 @@ func main() {
 		return
 	}
 
-	// Condition A: The Perfect Match
-	// Condition A: The Perfect Match
 	fmt.Println("✅ STAGE 4 PASSED: Perfect Match Found.")
 
 	fmt.Println("\n--- Final Deployment Blueprint ---")
@@ -53,9 +44,9 @@ func main() {
 		"backend":  extractedData.Backends[0],
 	}
 
-	// Convert it into beautiful, readable JSON
+	// Convert it into readable JSON
 	successJson, _ := json.MarshalIndent(finalBlueprint, "", "  ")
 	fmt.Println(string(successJson))
 
 	fmt.Println("\n-> Handing off to DockerService to build images...")
-} // End of main function
+}
