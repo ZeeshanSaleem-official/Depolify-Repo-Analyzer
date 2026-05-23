@@ -42,10 +42,20 @@ func main() {
 	}
 
 	// Condition A: The Perfect Match
+	// Condition A: The Perfect Match
 	fmt.Println("✅ STAGE 4 PASSED: Perfect Match Found.")
 
 	fmt.Println("\n--- Final Deployment Blueprint ---")
-	fmt.Printf("Frontend: %s at %s\n", extractedData.Frontends[0].Type, extractedData.Frontends[0].AbsolutePath)
-	fmt.Printf("Backend: %s at %s\n", extractedData.Backends[0].Type, extractedData.Backends[0].AbsolutePath)
-	fmt.Println("-> Handing off to DockerService to build images...")
-}
+
+	// Create a structured payload showing exactly what is being sent to the DockerService
+	finalBlueprint := map[string]interface{}{
+		"frontend": extractedData.Frontends[0],
+		"backend":  extractedData.Backends[0],
+	}
+
+	// Convert it into beautiful, readable JSON
+	successJson, _ := json.MarshalIndent(finalBlueprint, "", "  ")
+	fmt.Println(string(successJson))
+
+	fmt.Println("\n-> Handing off to DockerService to build images...")
+} // End of main function
