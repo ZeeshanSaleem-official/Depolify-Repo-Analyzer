@@ -13,8 +13,7 @@ func main() {
 	// TARGET DIRECTORY
 	// Swap these to test the different Stage 4 responses!
 	// ---------------------------------------------------------
-	// targetDir := "../../test-repos" // 👈 Use this to trigger the "Conflict Error"
-	targetDir := "../../MAIL CHIMP" // 👈 Use this to trigger the "Perfect Match"
+	targetDir := "../../test-repos/bad-repos"
 
 	absPath, _ := filepath.Abs(targetDir)
 	fmt.Println("🔍 Scanning repository at:", absPath)
@@ -36,8 +35,18 @@ func main() {
 	// SCENARIO 1: Empty or Unsupported Repository
 	if frontCount == 0 && backCount == 0 {
 		fmt.Println("❌ STAGE 4 FAILED: No recognizable frameworks found.")
-		fmt.Println("-> Please ensure the repository contains standard files like package.json, go.mod, or requirements.txt.")
-		return
+
+		// Package it as an official API response for your Next.js Dashboard
+		unknownResponse := map[string]interface{}{
+			"status":       "error",
+			"project_type": "Unknown",
+			"message":      "DEPOLIFY could not detect a supported framework. Please ensure you have a valid package.json, go.mod, or requirements.txt.",
+		}
+
+		jsonBytes, _ := json.MarshalIndent(unknownResponse, "", "  ")
+		fmt.Println(string(jsonBytes))
+
+		return // Safely halt the Docker hand-off
 	}
 
 	// SCENARIO 2: Frontend Conflict (Monorepo with too many options)
