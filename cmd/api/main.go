@@ -1,52 +1,75 @@
 package main
 
 import (
-	"depolify-analyzer/pkg/analyzer"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
+
+	"depolify-analyzer/pkg/analyzer"
 )
 
 func main() {
-	testRepoPath := "../../test-repos"
+	// ---------------------------------------------------------
+	// TARGET DIRECTORY
+	// Swap these to test the different Stage 4 responses!
+	// ---------------------------------------------------------
+	// targetDir := "../../test-repos" // 👈 Use this to trigger the "Conflict Error"
+	targetDir := "../../MAIL CHIMP" // 👈 Use this to trigger the "Perfect Match"
 
-	fmt.Println("Starting DEPOLIFY Repository Extraction...")
+	absPath, _ := filepath.Abs(targetDir)
+	fmt.Println("🔍 Scanning repository at:", absPath)
+	fmt.Println("🚀 Running DEPOLIFY Extraction Engine...\n")
 
-	extractedData, err := analyzer.ExtractDetails(testRepoPath)
+	// Run the extraction engine
+	extractedData, err := analyzer.ExtractDetails(targetDir)
 	if err != nil {
-		fmt.Println("Extraction failed:", err)
+		fmt.Println("❌ Extraction CRASHED:", err)
 		return
 	}
 
-	// Condition B: Missing Component
-	if len(extractedData.Frontends) == 0 || len(extractedData.Backends) == 0 {
-		fmt.Println("🚨 STAGE 4 ERROR: Incomplete Architecture! DEPOLIFY requires at least 1 Frontend and 1 Backend.")
+	// ==========================================
+	// STAGE 4: FAIL-SAFE & CONFLICT RESOLUTION
+	// ==========================================
+	frontCount := len(extractedData.Frontends)
+	backCount := len(extractedData.Backends)
+
+	// SCENARIO 1: Empty or Unsupported Repository
+	if frontCount == 0 && backCount == 0 {
+		fmt.Println("❌ STAGE 4 FAILED: No recognizable frameworks found.")
+		fmt.Println("-> Please ensure the repository contains standard files like package.json, go.mod, or requirements.txt.")
 		return
 	}
 
-	// Condition C: Multiple Candidates (The Dashboard Fallback)
-	if len(extractedData.Frontends) > 1 {
-		fmt.Println("🚨 STAGE 4 CONFLICT: Multiple UI projects detected!")
-		fmt.Println("-> Pausing backend deployment.")
-		fmt.Println("-> Sending JSON payload to Next.js Dashboard to ask user which Frontend to use...")
-
-		jsonData, _ := json.MarshalIndent(extractedData.Frontends, "", "  ")
-		fmt.Println(string(jsonData))
+	// SCENARIO 2: Frontend Conflict (Monorepo with too many options)
+	if frontCount > 1 {
+		fmt.Printf("⚠️ CONFLICT DETECTED: Found %d Frontends!\n", frontCount)
+		fmt.Println("-> AUTOMATION HALTED: Sending data to Next.js UI for user selection.")
+		printJSON(extractedData)
 		return
 	}
 
+	// SCENARIO 3: Backend Conflict (Monorepo with too many APIs)
+	if backCount > 1 {
+		fmt.Printf("⚠️ CONFLICT DETECTED: Found %d Backends!\n", backCount)
+		fmt.Println("-> AUTOMATION HALTED: Sending data to Next.js UI for user selection.")
+		printJSON(extractedData)
+		return
+	}
+
+	// SCENARIO 4: The Perfect Match (1 Frontend and/or 1 Backend)
 	fmt.Println("✅ STAGE 4 PASSED: Perfect Match Found.")
-
 	fmt.Println("\n--- Final Deployment Blueprint ---")
 
-	// Create a structured payload showing exactly what is being sent to the DockerService
-	finalBlueprint := map[string]interface{}{
-		"frontend": extractedData.Frontends[0],
-		"backend":  extractedData.Backends[0],
-	}
-
-	// Convert it into readable JSON
-	successJson, _ := json.MarshalIndent(finalBlueprint, "", "  ")
+	// Convert the perfect match into the final JSON payload
+	successJson, _ := json.MarshalIndent(extractedData, "", "  ")
 	fmt.Println(string(successJson))
 
 	fmt.Println("\n-> Handing off to DockerService to build images...")
+}
+
+// printJSON is a helper to output the options when a conflict occurs
+func printJSON(data interface{}) {
+	jsonBytes, _ := json.MarshalIndent(data, "", "  ")
+	fmt.Println("\n--- Available Deployment Options ---")
+	fmt.Println(string(jsonBytes))
 }

@@ -11,26 +11,34 @@ func ExtractDetails(repoRoot string) (*ExtractedRepo, error) {
 		Frontends: []DeploymentDetails{},
 		Backends:  []DeploymentDetails{},
 	}
+
 	// STAGE 1: The Configuration Check
-	if hasFile(repoRoot, "go.work") || hasFile(repoRoot, "pnpm-workspace.yaml") {
-		// Optimization placeholder for production
+	if hasFile(repoRoot, "go.work") || hasFile(repoRoot, "pnpm-workspace.yaml") || hasFile(repoRoot, "lerna.json") {
+		// In the future, you could parse these files to find exact workspace paths!
 	}
 
-	// Level 1 Scan (Root)
-	result = appendDetails(result, ScanDirectory(repoRoot))
+	// STAGE 2: Deep Recursive Scan
+	// We replace the hardcoded "Level 2" with a smart, recursive folder walker
+	filepath.WalkDir(repoRoot, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil // Skip errors and keep scanning
+		}
 
-	// Level 2 (one folder down)
-	enteries, err := os.ReadDir(repoRoot)
-
-	if err == nil {
-		for _, entry := range enteries {
-			// Blacklist enforcement (node modules etc)
-			if entry.IsDir() && entry.Name() != "node_modules" && entry.Name() != ".git" && entry.Name() != "vendor" {
-				subDirPath := filepath.Join(repoRoot, entry.Name())
-				result = appendDetails(result, ScanDirectory(subDirPath))
+		// Blacklist Enforcement: If it's a directory we don't want to scan, tell Go to skip it entirely!
+		if d.IsDir() {
+			if d.Name() == "node_modules" || d.Name() == ".git" || d.Name() == "vendor" || d.Name() == "dist" || d.Name() == ".next" {
+				return filepath.SkipDir // 🚨 Crucial to prevent infinite loops and lag!
 			}
 		}
-	}
+
+		// If it's a directory, run our Strategy Detectors on it!
+		if d.IsDir() {
+			result = appendDetails(result, ScanDirectory(path))
+		}
+
+		return nil
+	})
+
 	return result, nil
 }
 
