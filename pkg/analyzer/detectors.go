@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings" // Added for our new dynamic parsers
@@ -167,6 +168,8 @@ func hasDependency(dirPath, depName string) bool {
 	}
 	err = json.Unmarshal(file, &pkg)
 	if err != nil {
+		// 🚨 DEBUG UPGRADE: This will tell us EXACTLY why it's failing!
+		fmt.Printf("🚨 DEBUG: JSON Parsing failed in %s -> %v\n", pkgPath, err)
 		return false
 	}
 	_, exists := pkg.Dependencies[depName]

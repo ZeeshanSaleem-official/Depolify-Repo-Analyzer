@@ -13,7 +13,7 @@ func main() {
 	// TARGET DIRECTORY
 	// Swap these to test the different Stage 4 responses!
 	// ---------------------------------------------------------
-	targetDir := "../../test-repos/bad-repos"
+	targetDir := "../../test-repos/dummy-express"
 
 	absPath, _ := filepath.Abs(targetDir)
 	fmt.Println("🔍 Scanning repository at:", absPath)

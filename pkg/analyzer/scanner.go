@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -21,6 +22,7 @@ func ExtractDetails(repoRoot string) (*ExtractedRepo, error) {
 	// We replace the hardcoded "Level 2" with a smart, recursive folder walker
 	filepath.WalkDir(repoRoot, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
+			fmt.Printf("🚨 SCANNER ERROR: Cannot access path: %s\n", path)
 			return nil // Skip errors and keep scanning
 		}
 
