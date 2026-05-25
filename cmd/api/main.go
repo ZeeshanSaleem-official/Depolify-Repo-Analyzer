@@ -9,10 +9,7 @@ import (
 )
 
 func main() {
-	// ---------------------------------------------------------
 	// TARGET DIRECTORY
-	// Swap these to test the different Stage 4 responses!
-	// ---------------------------------------------------------
 	targetDir := "../../test-repos/dummy-express"
 
 	absPath, _ := filepath.Abs(targetDir)
