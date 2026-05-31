@@ -41,7 +41,10 @@ func ExtractDetails(repoRoot string) (*ExtractedRepo, error) {
 		return nil
 	})
 
-	return result, nil
+	resolvedResult := ResolveConflicts(result)
+
+	// Return the resolved, conflict-free blueprint
+	return resolvedResult, nil
 }
 
 // scanDirectory checks for signature files

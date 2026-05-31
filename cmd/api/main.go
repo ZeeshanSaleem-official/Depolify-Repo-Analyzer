@@ -10,7 +10,8 @@ import (
 
 func main() {
 	// TARGET DIRECTORY
-	targetDir := "../../test-repos/dummy-express"
+	// targetDir := "../../test-repos/dummy-express"
+	targetDir := "./deploify-poison-repo"
 
 	absPath, _ := filepath.Abs(targetDir)
 	fmt.Println("🔍 Scanning repository at:", absPath)

@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -163,6 +164,7 @@ func hasDependency(dirPath, depName string) bool {
 	if err != nil {
 		return false
 	}
+	file = bytes.TrimPrefix(file, []byte("\xef\xbb\xbf"))
 	var pkg struct {
 		Dependencies map[string]string `json:"dependencies"`
 	}
@@ -205,6 +207,8 @@ func getPackageScripts(dirPath string) map[string]string {
 	if err != nil {
 		return nil
 	}
+
+	file = bytes.TrimPrefix(file, []byte("\xef\xbb\xbf"))
 
 	var pkg struct {
 		Scripts map[string]string `json:"scripts"`

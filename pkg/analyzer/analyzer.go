@@ -16,6 +16,7 @@ const (
 
 // DeploymentDetails holds everything the orchestrator needs to deploy the app
 type DeploymentDetails struct {
+	Name         string      `json:"name"`
 	Type         ProjectType `json:"type"`
 	AbsolutePath string      `json:"absolute_path"`
 	BuildCmd     string      `json:"build_command"`
