@@ -55,6 +55,13 @@ func ResolveConflicts(repo *ExtractedRepo) *ExtractedRepo {
 	// This catches the Vercel failure mode — co-located go.mod + package.json
 	sharedRootConflicts := groupByDirectory(repo)
 
+	// Build a lookup of directories involved in shared-root conflicts
+	// so individual service objects can self-identify as conflicted.
+	conflictedDirs := make(map[string]bool)
+	for _, c := range sharedRootConflicts {
+		conflictedDirs[c.Directory] = true
+	}
+
 	usedPorts := make(map[string]bool)
 
 	// HELPER 1: Dynamically assign a free port if there is a collision
@@ -89,6 +96,9 @@ func ResolveConflicts(repo *ExtractedRepo) *ExtractedRepo {
 	for _, f := range repo.Frontends {
 		f.Name = generateName(f.AbsolutePath, f.Type)
 		f.DefaultPort = assignUniquePort(f.DefaultPort)
+		if conflictedDirs[f.AbsolutePath] {
+			f.ConflictRef = f.AbsolutePath
+		}
 		resolvedFrontends = append(resolvedFrontends, f)
 	}
 
@@ -96,6 +106,9 @@ func ResolveConflicts(repo *ExtractedRepo) *ExtractedRepo {
 	for _, b := range repo.Backends {
 		b.Name = generateName(b.AbsolutePath, b.Type)
 		b.DefaultPort = assignUniquePort(b.DefaultPort)
+		if conflictedDirs[b.AbsolutePath] {
+			b.ConflictRef = b.AbsolutePath
+		}
 		resolvedBackends = append(resolvedBackends, b)
 	}
 

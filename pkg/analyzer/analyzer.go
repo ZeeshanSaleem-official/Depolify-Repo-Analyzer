@@ -39,6 +39,7 @@ type DeploymentDetails struct {
 	BuildCmd     string      `json:"build_command"`
 	StartCmd     string      `json:"start_command"`
 	DefaultPort  string      `json:"default_port"`
+	ConflictRef  string      `json:"conflict_ref,omitempty"`
 }
 
 // ExtractedRepo holds the final results for the entire repository
