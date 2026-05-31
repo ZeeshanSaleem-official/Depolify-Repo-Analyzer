@@ -7,9 +7,54 @@ import (
 	"strings"
 )
 
+// groupByDirectory detects Shared-Root Conflicts — the scenario where
+// multiple frameworks (e.g., go.mod + package.json) coexist in the
+// same directory, causing platforms like Vercel to silently pick one.
+func groupByDirectory(repo *ExtractedRepo) []Conflict {
+	// 1. Merge all services into a single view, keyed by directory
+	dirMap := make(map[string][]DeploymentDetails)
+
+	for _, f := range repo.Frontends {
+		dirMap[f.AbsolutePath] = append(dirMap[f.AbsolutePath], f)
+	}
+	for _, b := range repo.Backends {
+		dirMap[b.AbsolutePath] = append(dirMap[b.AbsolutePath], b)
+	}
+
+	// 2. Any directory with > 1 service is a Shared-Root Conflict
+	var conflicts []Conflict
+	for dir, services := range dirMap {
+		if len(services) > 1 {
+			// Build a human-readable list of what collided
+			var types []string
+			for _, s := range services {
+				types = append(types, string(s.Type))
+			}
+
+			conflicts = append(conflicts, Conflict{
+				Type:      ConflictSharedRoot,
+				Directory: dir,
+				Services:  services,
+				Description: fmt.Sprintf(
+					"Directory contains %d co-located services (%s). "+
+						"Platforms like Vercel will silently deploy only one.",
+					len(services),
+					strings.Join(types, " + "),
+				),
+			})
+		}
+	}
+
+	return conflicts
+}
+
 // ResolveConflicts intercepts the scan results to fix Port Contentions
 // and assign unique container names for Shared-Root Monorepos.
 func ResolveConflicts(repo *ExtractedRepo) *ExtractedRepo {
+	// PHASE 1: Detect Shared-Root Conflicts
+	// This catches the Vercel failure mode — co-located go.mod + package.json
+	sharedRootConflicts := groupByDirectory(repo)
+
 	usedPorts := make(map[string]bool)
 
 	// HELPER 1: Dynamically assign a free port if there is a collision
@@ -57,5 +102,7 @@ func ResolveConflicts(repo *ExtractedRepo) *ExtractedRepo {
 	return &ExtractedRepo{
 		Frontends: resolvedFrontends,
 		Backends:  resolvedBackends,
+		Conflicts: sharedRootConflicts,
 	}
 }
+

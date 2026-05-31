@@ -30,6 +30,20 @@ func main() {
 	frontCount := len(extractedData.Frontends)
 	backCount := len(extractedData.Backends)
 
+	// SCENARIO 0: Shared-Root Conflict (THE VERCEL FAILURE MODE)
+	// This fires when go.mod + package.json (or any 2+ frameworks) share a directory
+	if len(extractedData.Conflicts) > 0 {
+		fmt.Printf("🚨 SHARED-ROOT CONFLICT DETECTED in %d director(ies)!\n",
+			len(extractedData.Conflicts))
+		for _, c := range extractedData.Conflicts {
+			fmt.Printf("   📁 %s → %s\n", c.Directory, c.Description)
+		}
+		fmt.Println("-> This is the exact scenario that causes Vercel to serve 404.")
+		fmt.Println("-> AUTOMATION HALTED: Sending to UI for explicit service selection.")
+		printJSON(extractedData)
+		return
+	}
+
 	// SCENARIO 1: Empty or Unsupported Repository
 	if frontCount == 0 && backCount == 0 {
 		fmt.Println("❌ STAGE 4 FAILED: No recognizable frameworks found.")

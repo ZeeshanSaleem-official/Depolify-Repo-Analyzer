@@ -14,6 +14,23 @@ const (
 	TypeUnknown    ProjectType = "Unknown"
 )
 
+// ConflictType classifies the category of deployment ambiguity detected
+type ConflictType string
+
+const (
+	ConflictSharedRoot     ConflictType = "SharedRoot"
+	ConflictPortContention ConflictType = "PortContention"
+)
+
+// Conflict represents a detected deployment ambiguity that platforms
+// like Vercel and Netlify would silently mishandle
+type Conflict struct {
+	Type        ConflictType        `json:"type"`
+	Directory   string              `json:"directory"`
+	Services    []DeploymentDetails `json:"services"`
+	Description string              `json:"description"`
+}
+
 // DeploymentDetails holds everything the orchestrator needs to deploy the app
 type DeploymentDetails struct {
 	Name         string      `json:"name"`
@@ -28,6 +45,7 @@ type DeploymentDetails struct {
 type ExtractedRepo struct {
 	Frontends []DeploymentDetails `json:"frontends"`
 	Backends  []DeploymentDetails `json:"backends"`
+	Conflicts []Conflict          `json:"conflicts,omitempty"`
 }
 
 // Detector is the standard function signature for the Strategy Pattern
