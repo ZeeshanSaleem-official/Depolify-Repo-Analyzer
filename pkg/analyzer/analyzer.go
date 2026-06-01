@@ -1,6 +1,6 @@
 package analyzer
 
-// ProjectType strictly defines the frameworks DEPOLIFY supports
+// ProjectType defines the supported framework types.
 type ProjectType string
 
 const (
@@ -14,7 +14,7 @@ const (
 	TypeUnknown    ProjectType = "Unknown"
 )
 
-// ConflictType classifies the category of deployment ambiguity detected
+// ConflictType defines the category of deployment ambiguity.
 type ConflictType string
 
 const (
@@ -22,8 +22,7 @@ const (
 	ConflictPortContention ConflictType = "PortContention"
 )
 
-// Conflict represents a detected deployment ambiguity that platforms
-// like Vercel and Netlify would silently mishandle
+// Conflict represents a deployment ambiguity such as shared-root or port contention.
 type Conflict struct {
 	Type        ConflictType        `json:"type"`
 	Directory   string              `json:"directory"`
@@ -31,7 +30,7 @@ type Conflict struct {
 	Description string              `json:"description"`
 }
 
-// DeploymentDetails holds everything the orchestrator needs to deploy the app
+// DeploymentDetails contains the necessary information to build and deploy a service.
 type DeploymentDetails struct {
 	Name         string      `json:"name"`
 	Type         ProjectType `json:"type"`
@@ -42,17 +41,17 @@ type DeploymentDetails struct {
 	ConflictRef  string      `json:"conflict_ref,omitempty"`
 }
 
-// ExtractedRepo holds the final results for the entire repository
+// ExtractedRepo contains the comprehensive deployment details for a repository.
 type ExtractedRepo struct {
 	Frontends []DeploymentDetails `json:"frontends"`
 	Backends  []DeploymentDetails `json:"backends"`
 	Conflicts []Conflict          `json:"conflicts,omitempty"`
 }
 
-// Detector is the standard function signature for the Strategy Pattern
+// Detector defines the signature for a framework detection strategy.
 type Detector func(dirPath string) *DeploymentDetails
 
-// Arrays storing all our separate extraction functions
+// Detectors for various frontend and backend frameworks.
 var frontendDetectors = []Detector{
 	detectNextJS,
 	detectReact,

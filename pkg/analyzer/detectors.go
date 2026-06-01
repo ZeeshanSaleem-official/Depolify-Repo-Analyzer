@@ -3,17 +3,12 @@ package analyzer
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings" // Added for our new dynamic parsers
+	"strings"
 )
 
-// ==========================================
-// FRONTEND DETECTORS
-// ==========================================
-
-// Detect NextJS
+// detectNextJS identifies Next.js applications and configures their deployment details.
 func detectNextJS(dirPath string) *DeploymentDetails {
 	if !hasDependency(dirPath, "next") {
 		return nil
@@ -27,13 +22,12 @@ func detectNextJS(dirPath string) *DeploymentDetails {
 		Type:         TypeNextJS,
 		AbsolutePath: dirPath,
 		BuildCmd:     "npm run build",
-		StartCmd:     "npm start", // Docker will safely run the user's custom script
+		StartCmd:     "npm start",
 		DefaultPort:  smartPort,
 	}
 }
 
-// Detect React
-// Detect React
+// detectReact identifies React applications and configures their deployment details.
 func detectReact(dirPath string) *DeploymentDetails {
 	if !hasDependency(dirPath, "react") {
 		return nil
@@ -43,7 +37,7 @@ func detectReact(dirPath string) *DeploymentDetails {
 	rawStartScript := scripts["start"]
 	smartPort := extractPort(rawStartScript, "3000")
 
-	// THE VITE UPGRADE: Dynamically switch the serve folder!
+	// Determine the correct build directory based on Vite configuration.
 	startCmd := "npx serve -s build"
 	if hasFile(dirPath, "vite.config.js") || hasFile(dirPath, "vite.config.ts") {
 		startCmd = "npx serve -s dist"
@@ -58,7 +52,7 @@ func detectReact(dirPath string) *DeploymentDetails {
 	}
 }
 
-// Detect Static Html
+// detectStaticHTML identifies static HTML applications.
 func detectStaticHTML(dirPath string) *DeploymentDetails {
 	if hasFile(dirPath, "index.html") && !hasFile(dirPath, "package.json") {
 		return &DeploymentDetails{
@@ -72,18 +66,14 @@ func detectStaticHTML(dirPath string) *DeploymentDetails {
 	return nil
 }
 
-// ==========================================
-// BACKEND DETECTORS
-// ==========================================
-
-// Detect Express
+// detectExpress identifies Express applications and configures their deployment details.
 func detectExpress(dirPath string) *DeploymentDetails {
 	if !hasDependency(dirPath, "express") {
 		return nil
 	}
 
 	scripts := getPackageScripts(dirPath)
-	startCmd := "node index.js" // Smart fallback
+	startCmd := "node index.js" // Default fallback command
 	rawStartScript := ""
 
 	if customStart, exists := scripts["start"]; exists {
@@ -102,22 +92,22 @@ func detectExpress(dirPath string) *DeploymentDetails {
 	}
 }
 
-// Detect Go
+// detectGo identifies Go applications and configures their deployment details.
 func detectGo(dirPath string) *DeploymentDetails {
 	if !hasFile(dirPath, "go.mod") {
 		return nil
 	}
 
-	// 1. Smart Default for simple apps
+	// Set default build and start commands.
 	buildCmd := "go build -o main ."
 	startCmd := "./main"
 
-	// 2. The Enterprise Upgrade: Check if they use the "cmd" folder structure
+	// Adjust build command if the standard "cmd" directory structure is used.
 	if hasDir(dirPath, "cmd") {
 		buildCmd = "go build -o main ./cmd/..."
 	}
 
-	// 3. The Heroku Strategy: Check for a Procfile override
+	// Override start command if a Procfile is present.
 	if procCmd := getProcfileCommand(dirPath); procCmd != "" {
 		startCmd = procCmd
 	}
@@ -131,15 +121,15 @@ func detectGo(dirPath string) *DeploymentDetails {
 	}
 }
 
-// Detect Python
+// detectPython identifies Python applications and configures their deployment details.
 func detectPython(dirPath string) *DeploymentDetails {
 	if !hasFile(dirPath, "requirements.txt") {
 		return nil
 	}
 
-	startCmd := "python main.py" // Smart fallback
+	startCmd := "python main.py" // Default fallback command
 
-	// The Heroku Strategy: Check for a Procfile override
+	// Override start command if a Procfile is present.
 	if procCmd := getProcfileCommand(dirPath); procCmd != "" {
 		startCmd = procCmd
 	}
@@ -153,11 +143,7 @@ func detectPython(dirPath string) *DeploymentDetails {
 	}
 }
 
-// ==========================================
-// UTILITY HELPERS
-// ==========================================
-
-// hasDependency safely opens package.json and checks for a specific package
+// hasDependency checks if a specific package is listed in package.json.
 func hasDependency(dirPath, depName string) bool {
 	pkgPath := filepath.Join(dirPath, "package.json")
 	file, err := os.ReadFile(pkgPath)
@@ -170,8 +156,6 @@ func hasDependency(dirPath, depName string) bool {
 	}
 	err = json.Unmarshal(file, &pkg)
 	if err != nil {
-		// 🚨 DEBUG UPGRADE: This will tell us EXACTLY why it's failing!
-		fmt.Printf("🚨 DEBUG: JSON Parsing failed in %s -> %v\n", pkgPath, err)
 		return false
 	}
 	_, exists := pkg.Dependencies[depName]
@@ -193,14 +177,10 @@ func hasDir(dirPath, dirName string) bool {
 	if os.IsNotExist(err) {
 		return false
 	}
-	return info.IsDir() // Returns true ONLY if it is a directory
+	return info.IsDir()
 }
 
-// ==========================================
-// DYNAMIC EXTRACTION HELPERS
-// ==========================================
-
-// getPackageScripts safely extracts the "scripts" object from package.json
+// getPackageScripts extracts the scripts object from package.json.
 func getPackageScripts(dirPath string) map[string]string {
 	pkgPath := filepath.Join(dirPath, "package.json")
 	file, err := os.ReadFile(pkgPath)
@@ -221,7 +201,7 @@ func getPackageScripts(dirPath string) map[string]string {
 	return pkg.Scripts
 }
 
-// extractPort hunts the start script for custom port declarations
+// extractPort parses the start script to identify custom port declarations.
 func extractPort(script string, defaultPort string) string {
 	if script == "" {
 		return defaultPort
@@ -248,7 +228,7 @@ func extractPort(script string, defaultPort string) string {
 	return defaultPort
 }
 
-// getProcfileCommand mimics Heroku's Buildpack extraction
+// getProcfileCommand extracts the web start command from a Procfile.
 func getProcfileCommand(dirPath string) string {
 	procfilePath := filepath.Join(dirPath, "Procfile")
 	file, err := os.ReadFile(procfilePath)

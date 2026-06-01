@@ -7,11 +7,10 @@ import (
 	"strings"
 )
 
-// groupByDirectory detects Shared-Root Conflicts — the scenario where
-// multiple frameworks (e.g., go.mod + package.json) coexist in the
-// same directory, causing platforms like Vercel to silently pick one.
+// groupByDirectory detects shared-root conflicts where multiple frameworks
+// coexist in the same directory, which may cause ambiguous deployments.
 func groupByDirectory(repo *ExtractedRepo) []Conflict {
-	// 1. Merge all services into a single view, keyed by directory
+	// Group services by their absolute directory path.
 	dirMap := make(map[string][]DeploymentDetails)
 
 	for _, f := range repo.Frontends {
@@ -21,11 +20,11 @@ func groupByDirectory(repo *ExtractedRepo) []Conflict {
 		dirMap[b.AbsolutePath] = append(dirMap[b.AbsolutePath], b)
 	}
 
-	// 2. Any directory with > 1 service is a Shared-Root Conflict
+	// Identify directories containing multiple services.
 	var conflicts []Conflict
 	for dir, services := range dirMap {
 		if len(services) > 1 {
-			// Build a human-readable list of what collided
+			// Collect service types for conflict description.
 			var types []string
 			for _, s := range services {
 				types = append(types, string(s.Type))
@@ -48,15 +47,13 @@ func groupByDirectory(repo *ExtractedRepo) []Conflict {
 	return conflicts
 }
 
-// ResolveConflicts intercepts the scan results to fix Port Contentions
-// and assign unique container names for Shared-Root Monorepos.
+// ResolveConflicts processes scan results to handle port contentions
+// and assign unique container names for shared-root monorepos.
 func ResolveConflicts(repo *ExtractedRepo) *ExtractedRepo {
-	// PHASE 1: Detect Shared-Root Conflicts
-	// This catches the Vercel failure mode — co-located go.mod + package.json
+	// Detect shared-root conflicts.
 	sharedRootConflicts := groupByDirectory(repo)
 
-	// Build a lookup of directories involved in shared-root conflicts
-	// so individual service objects can self-identify as conflicted.
+	// Map conflicted directories for quick lookup.
 	conflictedDirs := make(map[string]bool)
 	for _, c := range sharedRootConflicts {
 		conflictedDirs[c.Directory] = true
@@ -64,14 +61,14 @@ func ResolveConflicts(repo *ExtractedRepo) *ExtractedRepo {
 
 	usedPorts := make(map[string]bool)
 
-	// HELPER 1: Dynamically assign a free port if there is a collision
+	// assignUniquePort resolves port collisions by incrementing the port number.
 	assignUniquePort := func(requestedPort string) string {
 		port, err := strconv.Atoi(requestedPort)
 		if err != nil {
 			return requestedPort // Fallback if port isn't a simple number
 		}
 
-		// If port 3000 is taken, bump to 3001, 3002, etc.
+		// Increment port number until an unused port is found.
 		for usedPorts[strconv.Itoa(port)] {
 			port++
 		}
@@ -81,13 +78,13 @@ func ResolveConflicts(repo *ExtractedRepo) *ExtractedRepo {
 		return finalPort
 	}
 
-	// HELPER 2: Generate unique container names (e.g., "root-Go", "root-Next.js")
+	// generateName creates a unique identifier based on directory and project type.
 	generateName := func(absPath string, projType ProjectType) string {
 		dirName := filepath.Base(absPath)
 		if dirName == "." || dirName == "/" || dirName == "" {
 			dirName = "root"
 		}
-		// Clean the string so it's Docker-safe
+		// Ensure the project type string is formatted for container names.
 		safeType := strings.ReplaceAll(string(projType), " ", "-")
 		return fmt.Sprintf("%s-%s", dirName, safeType)
 	}
@@ -118,4 +115,3 @@ func ResolveConflicts(repo *ExtractedRepo) *ExtractedRepo {
 		Conflicts: sharedRootConflicts,
 	}
 }
-

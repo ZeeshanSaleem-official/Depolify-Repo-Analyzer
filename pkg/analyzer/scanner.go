@@ -1,39 +1,37 @@
 package analyzer
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 )
 
-// ExtractDetails
+// ExtractDetails scans the repository and identifies all deployable services.
 func ExtractDetails(repoRoot string) (*ExtractedRepo, error) {
 	result := &ExtractedRepo{
 		Frontends: []DeploymentDetails{},
 		Backends:  []DeploymentDetails{},
 	}
 
-	// STAGE 1: The Configuration Check
+	// Detect workspace configurations.
 	if hasFile(repoRoot, "go.work") || hasFile(repoRoot, "pnpm-workspace.yaml") || hasFile(repoRoot, "lerna.json") {
-		// In the future, you could parse these files to find exact workspace paths!
+		// Workspace parsing can be implemented here.
 	}
 
-	// STAGE 2: Deep Recursive Scan
-	// We replace the hardcoded "Level 2" with a smart, recursive folder walker
+	// Recursively scan the repository.
 	filepath.WalkDir(repoRoot, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			fmt.Printf("🚨 SCANNER ERROR: Cannot access path: %s\n", path)
-			return nil // Skip errors and keep scanning
+			return nil
 		}
 
-		// Blacklist Enforcement: If it's a directory we don't want to scan, tell Go to skip it entirely!
+		// Skip ignored directories to optimize scanning.
 		if d.IsDir() {
-			if d.Name() == "node_modules" || d.Name() == ".git" || d.Name() == "vendor" || d.Name() == "dist" || d.Name() == ".next" {
-				return filepath.SkipDir // 🚨 Crucial to prevent infinite loops and lag!
+			switch d.Name() {
+			case "node_modules", ".git", "vendor", "dist", ".next":
+				return filepath.SkipDir
 			}
 		}
 
-		// If it's a directory, run our Strategy Detectors on it!
+		// Analyze directory for supported frameworks.
 		if d.IsDir() {
 			result = appendDetails(result, ScanDirectory(path))
 		}
@@ -43,18 +41,17 @@ func ExtractDetails(repoRoot string) (*ExtractedRepo, error) {
 
 	resolvedResult := ResolveConflicts(result)
 
-	// Return the resolved, conflict-free blueprint
 	return resolvedResult, nil
 }
 
-// scanDirectory checks for signature files
+// ScanDirectory checks a directory for supported frontend and backend frameworks.
 func ScanDirectory(dirPath string) *ExtractedRepo {
 	tempResult := &ExtractedRepo{
 		Frontends: []DeploymentDetails{},
 		Backends:  []DeploymentDetails{},
 	}
 
-	// 1. Run all Frontend Detectors
+	// Execute frontend detectors.
 	for _, detect := range frontendDetectors {
 		details := detect(dirPath)
 		if details != nil {
@@ -62,7 +59,7 @@ func ScanDirectory(dirPath string) *ExtractedRepo {
 			break
 		}
 	}
-	// 2. Run all Backend Detectors
+	// Execute backend detectors.
 	for _, detect := range backendDetectors {
 		details := detect(dirPath)
 		if details != nil {
@@ -71,13 +68,9 @@ func ScanDirectory(dirPath string) *ExtractedRepo {
 		}
 	}
 	return tempResult
-
 }
 
-// UTILITY HELPERS
-
-// appendDetails merges the temporary scan results into the main result struct
-
+// appendDetails merges the temporary scan results into the main result struct.
 func appendDetails(main *ExtractedRepo, new *ExtractedRepo) *ExtractedRepo {
 	main.Frontends = append(main.Frontends, new.Frontends...)
 	main.Backends = append(main.Backends, new.Backends...)

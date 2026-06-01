@@ -9,88 +9,63 @@ import (
 )
 
 func main() {
-	// TARGET DIRECTORY
-	// targetDir := "../../test-repos/dummy-express"
 	targetDir := "./deploify-poison-repo"
-
 	absPath, _ := filepath.Abs(targetDir)
-	fmt.Println("🔍 Scanning repository at:", absPath)
-	fmt.Println("🚀 Running DEPOLIFY Extraction Engine...\n")
+	
+	fmt.Println("Scanning repository at:", absPath)
 
-	// Run the extraction engine
 	extractedData, err := analyzer.ExtractDetails(targetDir)
 	if err != nil {
-		fmt.Println("❌ Extraction CRASHED:", err)
+		fmt.Println("Extraction failed:", err)
 		return
 	}
 
-	// ==========================================
-	// STAGE 4: FAIL-SAFE & CONFLICT RESOLUTION
-	// ==========================================
 	frontCount := len(extractedData.Frontends)
 	backCount := len(extractedData.Backends)
 
-	// SCENARIO 0: Shared-Root Conflict (THE VERCEL FAILURE MODE)
-	// This fires when go.mod + package.json (or any 2+ frameworks) share a directory
+	// Handle shared-root conflicts where multiple frameworks coexist.
 	if len(extractedData.Conflicts) > 0 {
-		fmt.Printf("🚨 SHARED-ROOT CONFLICT DETECTED in %d director(ies)!\n",
-			len(extractedData.Conflicts))
+		fmt.Printf("Shared-root conflict detected in %d directory(ies).\n", len(extractedData.Conflicts))
 		for _, c := range extractedData.Conflicts {
-			fmt.Printf("   📁 %s → %s\n", c.Directory, c.Description)
+			fmt.Printf(" - %s: %s\n", c.Directory, c.Description)
 		}
-		fmt.Println("-> This is the exact scenario that causes Vercel to serve 404.")
-		fmt.Println("-> AUTOMATION HALTED: Sending to UI for explicit service selection.")
 		printJSON(extractedData)
 		return
 	}
 
-	// SCENARIO 1: Empty or Unsupported Repository
+	// Handle empty or unsupported repository scenarios.
 	if frontCount == 0 && backCount == 0 {
-		fmt.Println("❌ STAGE 4 FAILED: No recognizable frameworks found.")
-
-		// Package it as an official API response for your Next.js Dashboard
 		unknownResponse := map[string]interface{}{
 			"status":       "error",
 			"project_type": "Unknown",
-			"message":      "DEPOLIFY could not detect a supported framework. Please ensure you have a valid package.json, go.mod, or requirements.txt.",
+			"message":      "Could not detect a supported framework. Ensure a valid configuration file exists.",
 		}
 
 		jsonBytes, _ := json.MarshalIndent(unknownResponse, "", "  ")
 		fmt.Println(string(jsonBytes))
-
-		return // Safely halt the Docker hand-off
+		return
 	}
 
-	// SCENARIO 2: Frontend Conflict (Monorepo with too many options)
+	// Handle multiple frontend services.
 	if frontCount > 1 {
-		fmt.Printf("⚠️ CONFLICT DETECTED: Found %d Frontends!\n", frontCount)
-		fmt.Println("-> AUTOMATION HALTED: Sending data to Next.js UI for user selection.")
+		fmt.Printf("Conflict detected: Found %d frontends.\n", frontCount)
 		printJSON(extractedData)
 		return
 	}
 
-	// SCENARIO 3: Backend Conflict (Monorepo with too many APIs)
+	// Handle multiple backend services.
 	if backCount > 1 {
-		fmt.Printf("⚠️ CONFLICT DETECTED: Found %d Backends!\n", backCount)
-		fmt.Println("-> AUTOMATION HALTED: Sending data to Next.js UI for user selection.")
+		fmt.Printf("Conflict detected: Found %d backends.\n", backCount)
 		printJSON(extractedData)
 		return
 	}
 
-	// SCENARIO 4: The Perfect Match (1 Frontend and/or 1 Backend)
-	fmt.Println("✅ STAGE 4 PASSED: Perfect Match Found.")
-	fmt.Println("\n--- Final Deployment Blueprint ---")
-
-	// Convert the perfect match into the final JSON payload
+	// Process successful single frontend and/or single backend detection.
 	successJson, _ := json.MarshalIndent(extractedData, "", "  ")
 	fmt.Println(string(successJson))
-
-	fmt.Println("\n-> Handing off to DockerService to build images...")
 }
 
-// printJSON is a helper to output the options when a conflict occurs
 func printJSON(data interface{}) {
 	jsonBytes, _ := json.MarshalIndent(data, "", "  ")
-	fmt.Println("\n--- Available Deployment Options ---")
 	fmt.Println(string(jsonBytes))
 }
